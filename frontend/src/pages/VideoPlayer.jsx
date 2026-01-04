@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaThumbsUp, FaShare, FaFlag, FaUserCircle, FaClock, FaEye } from 'react-icons/fa';
 import api from '../utils/api';
+import { AuthContext } from '../context/AuthContext';
 
 const VideoPlayer = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useContext(AuthContext);
     const [video, setVideo] = useState(null);
     const [relatedVideos, setRelatedVideos] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -98,22 +100,26 @@ const VideoPlayer = () => {
                             </div>
                         </div>
 
-                         {/* Creator Info & Description */}
-                         <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/[0.07] transition-colors cursor-pointer border border-white/5">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#fcb900] to-[#fde047] p-0.5 shrink-0">
-                                <div className="w-full h-full rounded-full bg-dark-900 flex items-center justify-center text-[#fcb900] font-bold text-xl">
-                                    {video.uploadedBy?.username?.[0]?.toUpperCase() || <FaUserCircle />}
+                         {/* Creator Info & Description - Only for Admins */}
+                         {user?.role === 'admin' && (
+                             <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/[0.07] transition-colors cursor-pointer border border-white/5">
+                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#fcb900] to-[#fde047] p-0.5 shrink-0">
+                                    <div className="w-full h-full rounded-full bg-dark-900 flex items-center justify-center text-[#fcb900] font-bold text-xl">
+                                        {video.uploadedBy?.username?.[0]?.toUpperCase() || <FaUserCircle />}
+                                    </div>
                                 </div>
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="font-bold text-white text-lg">{video.uploadedBy?.username || 'Unknown Creator'}</h3>
-                                <p className="text-sm text-gray-400 mb-3">{video.organization || 'Pulse Creator'}</p>
-                                <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
-                                    {video.description || "No description provided."}
-                                </p>
-                            </div>
-
-                         </div>
+                                <div className="flex-1">
+                                    <h3 className="font-bold text-white text-lg">
+                                        {video.uploadedBy?.username || 'Unknown Creator'} 
+                                        <span className="ml-2 text-xs bg-gray-700 px-2 py-0.5 rounded text-gray-300">Uploaded By</span>
+                                    </h3>
+                                    <p className="text-sm text-gray-400 mb-3">{video.organization || 'Pulse Creator'}</p>
+                                    <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
+                                        {video.description || "No description provided."}
+                                    </p>
+                                </div>
+                             </div>
+                         )}
                     </div>
                 </div>
 
