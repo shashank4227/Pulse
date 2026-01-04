@@ -12,7 +12,7 @@ const VideoPlayer = () => {
     useEffect(() => {
         const token = localStorage.getItem('token');
         // Use standard consistent logic for local development
-         setVideoUrl(`http://localhost:5000/api/videos/stream/${id}?token=${token}`);
+         setVideoUrl(`${import.meta.env.VITE_API_URL}/videos/stream/${id}?token=${token}`);
 
          // Explicitly increment view count when player mounts (user visits page)
          // This handles "resuming" correctly as every visit is a view.

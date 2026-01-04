@@ -548,7 +548,7 @@ export const Dashboard = () => {
                                                             </div>
                                                             {video.processingStatus === 'completed' && (
                                                                 <video
-                                                                    src={`http://localhost:5000/api/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                                    src={`${import.meta.env.VITE_API_URL}/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
                                                                     className="absolute inset-0 w-full h-full object-cover opacity-75"
                                                                     muted
                                                                     loop
@@ -619,7 +619,7 @@ export const Dashboard = () => {
                                             <div>
                                                 <div className="aspect-video rounded-xl bg-black/40 mb-4 overflow-hidden relative">
                                                     <video
-                                                        src={`http://localhost:5000/api/videos/stream/${topVideo._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                        src={`${import.meta.env.VITE_API_URL}/videos/stream/${topVideo._id}?token=${localStorage.getItem('token')}#t=2`}
                                                         className="absolute inset-0 w-full h-full object-cover opacity-60"
                                                         muted
                                                         loop
@@ -677,7 +677,7 @@ export const Dashboard = () => {
                                                     <div key={video._id} className="bg-dark-800 rounded-3xl p-4 hover:bg-dark-700 transition-colors group cursor-pointer border border-white/5 hover:border-[#fcb900]/30" onClick={() => navigate(`/watch/${video._id}`)}>
                                                         <div className="aspect-video rounded-2xl bg-black/50 relative overflow-hidden mb-4">
                                                             <video
-                                                                src={`http://localhost:5000/api/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                                src={`${import.meta.env.VITE_API_URL}/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
                                                                 className="absolute inset-0 w-full h-full object-cover opacity-80"
                                                                 muted
                                                                 loop
@@ -718,7 +718,7 @@ export const Dashboard = () => {
                                             {/* Placeholder for video thumbnail as background */}
                                             <div className="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/50 to-transparent z-10"></div>
                                             <video 
-                                                src={`http://localhost:5000/api/videos/stream/${topVideo._id}?token=${localStorage.getItem('token')}#t=2`} 
+                                                src={`${import.meta.env.VITE_API_URL}/videos/stream/${topVideo._id}?token=${localStorage.getItem('token')}#t=2`} 
                                                 className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
                                                 autoPlay 
                                                 muted 
@@ -767,7 +767,7 @@ export const Dashboard = () => {
                                                 <div key={video._id} className="bg-dark-800 rounded-3xl p-4 hover:bg-dark-700 transition-colors group cursor-pointer border border-transparent hover:border-white/5" onClick={() => navigate(`/watch/${video._id}`)}>
                                                 <div className="aspect-video rounded-2xl bg-black/50 relative overflow-hidden mb-4">
                                                     <video
-                                                        src={`http://localhost:5000/api/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                        src={`${import.meta.env.VITE_API_URL}/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
                                                         className="absolute inset-0 w-full h-full object-cover opacity-80"
                                                         muted
                                                         loop
@@ -805,7 +805,7 @@ export const Dashboard = () => {
                                             <div key={video._id} className="relative group cursor-pointer" onClick={() => navigate(`/watch/${video._id}`)}>
                                                 <div className="aspect-[3/4] rounded-2xl bg-dark-800 overflow-hidden relative mb-3 border border-white/5">
                                                      <video
-                                                        src={`http://localhost:5000/api/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                        src={`${import.meta.env.VITE_API_URL}/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
                                                         className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
                                                         muted
                                                         loop
@@ -837,7 +837,7 @@ export const Dashboard = () => {
                                             <div key={video._id} className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate(`/watch/${video._id}`)}>
                                                 <div className="w-16 h-16 rounded-xl bg-dark-800 flex-shrink-0 relative overflow-hidden border border-white/5">
                                                      <video
-                                                        src={`http://localhost:5000/api/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                        src={`${import.meta.env.VITE_API_URL}/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
                                                         className="absolute inset-0 w-full h-full object-cover opacity-80"
                                                         muted
                                                         loop
