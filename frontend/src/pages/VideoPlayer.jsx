@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft } from 'react-icons/fa';
+import api from '../utils/api';
 
 const VideoPlayer = () => {
     const { id } = useParams();
@@ -12,6 +13,17 @@ const VideoPlayer = () => {
         const token = localStorage.getItem('token');
         // Use standard consistent logic for local development
          setVideoUrl(`http://localhost:5000/api/videos/stream/${id}?token=${token}`);
+
+         // Explicitly increment view count when player mounts (user visits page)
+         // This handles "resuming" correctly as every visit is a view.
+         const incrementView = async () => {
+             try {
+                 await api.post(`/videos/${id}/view`);
+             } catch (err) {
+                 console.error("View increment failed", err);
+             }
+         };
+         incrementView();
     }, [id]);
 
     return (

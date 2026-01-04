@@ -7,18 +7,21 @@ import {
     FaPlay, FaExclamationTriangle, FaCheckCircle, FaSpinner, 
     FaSignOutAlt, FaRedo, FaWifi, FaBell, FaCloudUploadAlt,
     FaChartLine, FaClock, FaThumbsUp, FaComment, FaShare, FaTimes, FaVideo,
-    FaBolt, FaCompass, FaUsers, FaHeart, FaSearch, FaPlus, FaStar
+    FaBolt, FaCompass, FaUsers, FaHeart, FaSearch, FaPlus, FaStar, FaShieldAlt, FaTrash
 } from 'react-icons/fa';
 import { useNavigate, Link } from 'react-router-dom';
 
 export const Dashboard = () => {
     const [videos, setVideos] = useState([]);
-    const [stats, setStats] = useState({ totalViews: 0, subscribers: 0, growth: 0 });
+    const [stats, setStats] = useState({ totalViews: 0, subscribers: 0, safePercentage: 0, efficiencyStatus: 'Excellent', efficiencyPercentage: 100, growth: 0 });
     const [isUploadOpen, setIsUploadOpen] = useState(false);
     const [editingVideo, setEditingVideo] = useState(null);
     
     // Derived state for top video
     const [topVideo, setTopVideo] = useState(null);
+    const [filter, setFilter] = useState('all');
+    const [showInfoModal, setShowInfoModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const { user, logout } = useContext(AuthContext);
     const { socket, isConnected } = useContext(SocketContext);
@@ -26,7 +29,7 @@ export const Dashboard = () => {
 
     const fetchVideos = useCallback(async () => {
         try {
-            const res = await api.get('/videos');
+            const res = await api.get(`/videos?t=${Date.now()}`);
             const videosWithProgress = res.data.map(video => ({
                 ...video,
                 progress: video.progress !== undefined ? video.progress : (video.processingStatus === 'processing' ? 0 : undefined)
@@ -34,18 +37,58 @@ export const Dashboard = () => {
             
             // Sort by newest first
             const sortedVideos = videosWithProgress.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            setVideos(sortedVideos);
+            // Calculate Stats: Safe Content %, Efficiency, & Growth
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
 
-            // Calculate Stats
+            // Growth Calculation
+            const thisMonthVideos = sortedVideos.filter(v => {
+                const d = new Date(v.createdAt);
+                return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+            });
+            const lastMonthVideos = sortedVideos.filter(v => {
+                const d = new Date(v.createdAt);
+                const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+                const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+                return d.getMonth() === lastMonth && d.getFullYear() === lastMonthYear;
+            });
+            const thisMonthViews = thisMonthVideos.reduce((acc, v) => acc + (v.views || 0), 0);
+            const lastMonthViews = lastMonthVideos.reduce((acc, v) => acc + (v.views || 0), 0);
+            let growthRate = 0;
+            if (lastMonthViews === 0) {
+                growthRate = thisMonthViews > 0 ? 100 : 0;
+            } else {
+                growthRate = ((thisMonthViews - lastMonthViews) / lastMonthViews) * 100;
+            }
+
+            // Safe Content & Efficiency
+            const totalCount = sortedVideos.length;
+            const safeCount = sortedVideos.filter(v => v.sensitivityStatus === 'safe').length;
+            const safePercentage = totalCount > 0 ? Math.round((safeCount / totalCount) * 100) : 0;
+
+            const failedCount = sortedVideos.filter(v => v.processingStatus === 'failed').length;
+            const failureRate = totalCount > 0 ? (failedCount / totalCount) * 100 : 0;
+            const efficiencyPercentage = Math.max(0, 100 - failureRate);
+
+            let efficiencyStatus = 'Excellent';
+            if (failureRate > 10) efficiencyStatus = 'Needs Attention';
+            else if (failureRate > 0) efficiencyStatus = 'Good';
+
             const totalViews = sortedVideos.reduce((acc, v) => acc + (v.views || 0), 0);
+            
             // Find top video
             const best = sortedVideos.reduce((max, v) => (v.views || 0) > (max ? max.views || 0 : -1) ? v : max, null);
             setTopVideo(best);
+            setVideos(sortedVideos); // RESTOREED missing state update
             
             setStats({
                 totalViews,
                 subscribers: user?.subscribersCount || 0,
-                growth: 12 // Mocked for now, or compare with previous month if data existed
+                safePercentage,
+                efficiencyStatus,
+                efficiencyPercentage,
+                growth: Math.round(growthRate)
             });
 
         } catch (error) {
@@ -69,6 +112,7 @@ export const Dashboard = () => {
                             progress: data.progress !== undefined ? data.progress : v.progress
                         };
                         if (data.sensitivity !== undefined) updated.sensitivityStatus = data.sensitivity;
+                        if (data.details !== undefined) updated.sensitivityDetails = data.details;
                         return updated;
                     }
                     return v;
@@ -108,7 +152,47 @@ export const Dashboard = () => {
         }
     };
 
-    const isEditor = user?.role === 'content_creator' || user?.role === 'admin';
+    const handleDeleteVideo = async (videoId) => {
+        if (window.confirm('Are you sure you want to delete this video? This cannot be undone.')) {
+            try {
+                await api.delete(`/videos/${videoId}`);
+                fetchVideos();
+            } catch (error) {
+                console.error('Delete failed:', error);
+                alert('Failed to delete video');
+            }
+        }
+    };
+
+    const isEditor = user?.role === 'editor' || user?.role === 'content_creator' || user?.role === 'admin';
+
+    // Filter Logic
+    let processedVideos = [...videos];
+
+    // 1. Filter Mechanism
+    if (filter === 'safe') {
+        processedVideos = processedVideos.filter(v => v.sensitivityStatus === 'safe');
+    } else if (filter === 'flagged') {
+        processedVideos = processedVideos.filter(v => v.sensitivityStatus === 'flagged');
+    } else if (filter === 'processing') {
+         processedVideos = processedVideos.filter(v => v.processingStatus !== 'completed');
+    }
+
+    // 2. Search Mechanism
+    if (searchQuery) {
+        processedVideos = processedVideos.filter(v => v.title.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+
+
+
+    // 3. Sort Mechanism
+    if (filter === 'trending') {
+        processedVideos.sort((a, b) => (b.views || 0) - (a.views || 0));
+    } else if (filter === 'recent') {
+        processedVideos.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    const filteredVideos = processedVideos;
 
     return (
         <div className="min-h-screen bg-dark-900 font-sans text-white overflow-hidden flex">
@@ -205,6 +289,44 @@ export const Dashboard = () => {
                 </div>
             )}
 
+            {/* Info Modal */}
+            {showInfoModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
+                     <div className="bg-dark-800 rounded-3xl border border-white/10 p-8 w-full max-w-lg shadow-2xl relative">
+                        <button 
+                            onClick={() => setShowInfoModal(false)}
+                            className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                        >
+                            <FaTimes />
+                        </button>
+                        
+                        <div className="flex items-center gap-3 mb-6 text-[#fcb900]">
+                            <FaShieldAlt className="text-3xl" />
+                            <h3 className="text-2xl font-bold font-heading">Pulse AI Safety</h3>
+                        </div>
+
+                        <div className="space-y-4 text-gray-300 leading-relaxed">
+                            <p>
+                                <strong className="text-white">Active Content Moderation:</strong> Pulse uses advanced Generative AI to analyze every video frame-by-frame during upload.
+                            </p>
+                            <p>
+                                <strong className="text-white">Real-time Flagging:</strong> Harmful content is instantly detected and flagged with detailed reasons (Violence, Nudity, Hate Speech).
+                            </p>
+                            <p>
+                                <strong className="text-white">Viewer Protection:</strong> Sensitive content is automatically filtered from the main feed, ensuring a safe viewing experience for everyone.
+                            </p>
+                        </div>
+
+                        <button 
+                            onClick={() => setShowInfoModal(false)}
+                            className="w-full mt-8 py-3 rounded-xl bg-[#fcb900] text-dark-900 font-bold hover:bg-[#e5a800] transition-colors"
+                        >
+                            Got it
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* LEFT SIDEBAR - Unified */}
             <div className="w-64 bg-dark-800/50 backdrop-blur-xl border-r border-white/5 flex flex-col p-6 hidden md:flex shrink-0">
                 <div className="flex items-center gap-3 mb-10 text-[#fcb900]">
@@ -218,43 +340,57 @@ export const Dashboard = () => {
                         <div className="space-y-2">
                             {isEditor ? (
                                 <>
-                                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-[#fcb900] text-dark-900 font-bold shadow-lg shadow-[#fcb900]/20">
-                                        <FaChartLine /> <span>Dashboard</span>
+                                    <button 
+                                        onClick={() => setFilter('all')}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'all' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
+                                    >
+                                        <FaVideo /> <span>All Videos</span>
                                     </button>
-                                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
-                                        <FaVideo /> <span>Content</span>
+                                    <button 
+                                        onClick={() => setFilter('safe')}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'safe' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
+                                    >
+                                        <FaShieldAlt /> <span>Safe Content</span>
                                     </button>
-                                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
-                                        <FaChartLine /> <span>Analytics</span>
+                                    <button 
+                                        onClick={() => setFilter('flagged')}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'flagged' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
+                                    >
+                                        <FaExclamationTriangle /> <span>Flagged Content</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => setFilter('processing')}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'processing' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
+                                    >
+                                        <FaSpinner className={filter === 'processing' ? 'animate-spin' : ''} /> <span>Processing</span>
                                     </button>
                                 </>
                             ) : (
                                 <>
-                                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-[#fcb900] text-dark-900 font-bold shadow-lg shadow-[#fcb900]/20">
-                                        <FaPlay /> <span>Home</span>
+                                    <button 
+                                        onClick={() => setFilter('all')}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'all' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
+                                    >
+                                        <FaPlay /> <span>All Content</span>
                                     </button>
-                                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
-                                        <FaCompass /> <span>Discovery</span>
+                                    <button 
+                                        onClick={() => setFilter('trending')}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'trending' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
+                                    >
+                                        <FaCompass /> <span>Trending</span>
                                     </button>
-                                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
-                                        <FaUsers /> <span>Community</span>
+                                    <button 
+                                        onClick={() => setShowInfoModal(true)}
+                                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
+                                    >
+                                        <FaShieldAlt /> <span>AI Safety Info</span>
                                     </button>
                                 </>
                             )}
                         </div>
                     </div>
                     
-                    <div>
-                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-4">Library</h4>
-                        <div className="space-y-2">
-                            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
-                                <FaClock /> <span>Recent</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors">
-                                <FaHeart /> <span>Favorites</span>
-                            </button>
-                        </div>
-                    </div>
+
 
                     <div className="mt-auto pt-8 border-t border-white/5">
                         <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-red-400 transition-colors">
@@ -269,29 +405,32 @@ export const Dashboard = () => {
                 {/* Header / Search */}
                 <div className="h-20 border-b border-white/5 flex items-center justify-between px-8 bg-dark-900/90 backdrop-blur-sm z-10 shrink-0">
                     <div className="flex items-center gap-6 text-gray-400 text-sm font-medium">
-                        {isEditor ? (
+                        {isEditor && (
                             <h2 className="text-white font-bold text-lg">Studio Dashboard</h2>
-                        ) : (
-                            <>
-                                <button className="text-white border-b-2 border-[#fcb900] pb-1">Series</button>
-                                <button className="hover:text-white transition-colors">Movies</button>
-                                <button className="hover:text-white transition-colors">Anime</button>
-                            </>
                         )}
                     </div>
                     <div className="flex items-center gap-4">
-                        <div 
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${isConnected ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'} transition-all`}
-                            title={isConnected ? "Real-time connection active" : "Connection lost"}
-                        >
-                            <FaWifi className={`text-xs ${isConnected ? '' : 'opacity-50'}`} />
-                            <span className="text-xs font-medium hidden md:block">{isConnected ? 'Live' : 'Offline'}</span>
-                        </div>
+                        {isEditor && (
+                            <div 
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${isConnected ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'} transition-all`}
+                                title={isConnected ? "Real-time connection active" : "Connection lost"}
+                            >
+                                <FaWifi className={`text-xs ${isConnected ? '' : 'opacity-50'}`} />
+                                <span className="text-xs font-medium hidden md:block">{isConnected ? 'Live' : 'Offline'}</span>
+                            </div>
+                        )}
 
                         {!isEditor && (
-                            <button className="w-10 h-10 rounded-full bg-dark-800 flex items-center justify-center text-gray-400 hover:text-white transition-colors">
-                                <FaSearch />
-                            </button>
+                            <div className="relative">
+                                <input 
+                                    type="text" 
+                                    placeholder="Search videos..." 
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="bg-dark-800 text-white rounded-full px-4 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-[#fcb900] w-64 transition-all"
+                                />
+                                <FaSearch className="absolute left-3 top-3 text-gray-400" />
+                            </div>
                         )}
                         
                         <button className="w-10 h-10 rounded-full bg-dark-800 flex items-center justify-center text-gray-400 hover:text-white transition-colors relative">
@@ -333,9 +472,38 @@ export const Dashboard = () => {
                                     <div className="text-[#fcb900] text-xs font-bold mt-2">+{stats.growth}% this month</div>
                                 </div>
                                 <div className="bg-dark-800/50 backdrop-blur-md p-6 rounded-3xl border border-white/5">
-                                    <div className="text-gray-400 text-sm mb-2">Subscribers</div>
-                                    <div className="text-3xl font-black text-white">{stats.subscribers.toLocaleString()}</div>
-                                    <div className="text-green-400 text-xs font-bold mt-2">Growing fast</div>
+                                    <h3 className="text-white font-bold text-lg mb-6">Channel Health</h3>
+                                    <div className="space-y-6">
+                                        {/* Safe Content */}
+                                        <div>
+                                            <div className="flex justify-between items-end mb-2">
+                                                <span className="text-gray-400 text-sm font-medium">Safe Content</span>
+                                                <span className="text-green-400 font-bold">{stats.safePercentage}%</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-dark-900 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full bg-green-400 rounded-full transition-all duration-1000 ease-out"
+                                                    style={{ width: `${stats.safePercentage}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+
+                                        {/* Processing Efficiency */}
+                                        <div>
+                                            <div className="flex justify-between items-end mb-2">
+                                                <span className="text-gray-400 text-sm font-medium">Processing Efficiency</span>
+                                                <span className={`font-bold ${stats.efficiencyStatus === 'Excellent' ? 'text-green-400' : stats.efficiencyStatus === 'Good' ? 'text-[#fcb900]' : 'text-red-400'}`}>
+                                                    {stats.efficiencyStatus}
+                                                </span>
+                                            </div>
+                                            <div className="h-2 w-full bg-dark-900 rounded-full overflow-hidden">
+                                                <div 
+                                                    className={`h-full rounded-full transition-all duration-1000 ease-out ${stats.efficiencyStatus === 'Excellent' ? 'bg-green-400' : stats.efficiencyStatus === 'Good' ? 'bg-[#fcb900]' : 'bg-red-400'}`}
+                                                    style={{ width: `${stats.efficiencyPercentage}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="bg-dark-800/50 backdrop-blur-md p-6 rounded-3xl border border-white/5">
                                     <div className="text-gray-400 text-sm mb-2">Total Videos</div>
@@ -365,13 +533,13 @@ export const Dashboard = () => {
                                     </div>
 
                                     <div className="space-y-3">
-                                        {videos.length === 0 ? (
+                                        {filteredVideos.length === 0 ? (
                                              <div className="text-center py-12 text-gray-500 bg-dark-800/30 rounded-3xl border border-dashed border-white/10">
                                                 <p>No videos uploaded yet.</p>
                                                 <button onClick={() => setIsUploadOpen(true)} className="mt-4 text-[#fcb900] hover:underline">Upload your first video</button>
                                             </div>
                                         ) : (
-                                            videos.map(video => (
+                                            filteredVideos.map(video => (
                                                 <div key={video._id} className="group flex flex-col gap-4 p-4 rounded-2xl bg-dark-800/40 hover:bg-dark-700/60 border border-white/5 hover:border-white/10 transition-all">
                                                     <div className="flex items-start gap-4">
                                                         <div className="w-32 aspect-video rounded-xl bg-black/50 overflow-hidden relative shrink-0">
@@ -379,7 +547,14 @@ export const Dashboard = () => {
                                                                 <FaPlay />
                                                             </div>
                                                             {video.processingStatus === 'completed' && (
-                                                                <div className="absolute inset-0 bg-cover bg-center opacity-75" style={{ backgroundImage: `url(https://source.unsplash.com/random/300x200?sig=${video._id})` }}></div>
+                                                                <video
+                                                                    src={`http://localhost:5000/api/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                                    className="absolute inset-0 w-full h-full object-cover opacity-75"
+                                                                    muted
+                                                                    loop
+                                                                    onMouseOver={e => e.target.play()}
+                                                                    onMouseOut={e => { e.target.pause(); e.target.currentTime = 2; }}
+                                                                />
                                                             )}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
@@ -424,6 +599,9 @@ export const Dashboard = () => {
                                                             <button onClick={() => setEditingVideo(video)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors" title="Edit">
                                                                 <FaRedo />
                                                             </button>
+                                                            <button onClick={() => handleDeleteVideo(video._id)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-red-400 transition-colors" title="Delete">
+                                                                <FaTrash />
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -440,7 +618,14 @@ export const Dashboard = () => {
                                         {topVideo ? (
                                             <div>
                                                 <div className="aspect-video rounded-xl bg-black/40 mb-4 overflow-hidden relative">
-                                                    <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(https://source.unsplash.com/random/400x300?sig=${topVideo._id})` }}></div>
+                                                    <video
+                                                        src={`http://localhost:5000/api/videos/stream/${topVideo._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                        className="absolute inset-0 w-full h-full object-cover opacity-60"
+                                                        muted
+                                                        loop
+                                                        autoPlay
+                                                        playsInline
+                                                    />
                                                 </div>
                                                 <div className="font-bold text-white mb-1 truncate">{topVideo.title}</div>
                                                 <div className="flex justify-between text-sm text-gray-400">
@@ -453,51 +638,92 @@ export const Dashboard = () => {
                                         )}
                                     </div>
 
-                                    {/* Quick Analytics */}
-                                    <div className="bg-dark-800/50 backdrop-blur-md rounded-3xl p-6 border border-white/5">
-                                        <h3 className="text-lg font-bold text-white mb-4">Channel Health</h3>
-                                        <div className="space-y-4">
-                                            <div>
-                                                <div className="flex justify-between text-xs text-gray-400 mb-1">
-                                                    <span>Safe Content</span>
-                                                    <span className="text-green-400">98%</span>
-                                                </div>
-                                                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-green-400 w-[98%]"></div>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div className="flex justify-between text-xs text-gray-400 mb-1">
-                                                    <span>processing Efficiency</span>
-                                                    <span className="text-[#fcb900]">Good</span>
-                                                </div>
-                                                <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-[#fcb900] w-[85%]"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                              
                                 </div>
                             </div>
                          </div>
                     ) : (
                         // =================================================================================
-                        // VIEWER VIEW CONTENT (Existing Grids)
+                        // VIEWER VIEW CONTENT
                         // =================================================================================
                         <div className="flex flex-col lg:flex-row gap-8">
                             {/* Center Column */}
                             <div className="flex-1 space-y-8">
                                 
-                                {/* Hero Banner */}
+                                {/* SEARCH RESULTS VIEW */}
+                                {searchQuery ? (
+                                    <div className="animate-fadeIn">
+                                        <div className="flex items-center justify-between mb-8">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-12 h-12 rounded-full bg-[#fcb900]/10 flex items-center justify-center text-[#fcb900] border border-[#fcb900]/20">
+                                                    <FaSearch className="text-xl" />
+                                                </div>
+                                                <div>
+                                                    <h2 className="text-2xl font-bold text-white">Search Results</h2>
+                                                    <p className="text-gray-400">Found {filteredVideos.length} videos for "<span className="text-[#fcb900]">{searchQuery}</span>"</p>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => setSearchQuery('')}
+                                                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors text-sm font-bold flex items-center gap-2"
+                                            >
+                                                <FaTimes /> Clear Search
+                                            </button>
+                                        </div>
+
+                                        {filteredVideos.length > 0 ? (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                                {filteredVideos.map(video => (
+                                                    <div key={video._id} className="bg-dark-800 rounded-3xl p-4 hover:bg-dark-700 transition-colors group cursor-pointer border border-white/5 hover:border-[#fcb900]/30" onClick={() => navigate(`/watch/${video._id}`)}>
+                                                        <div className="aspect-video rounded-2xl bg-black/50 relative overflow-hidden mb-4">
+                                                            <video
+                                                                src={`http://localhost:5000/api/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                                className="absolute inset-0 w-full h-full object-cover opacity-80"
+                                                                muted
+                                                                loop
+                                                                onMouseOver={e => e.target.play()}
+                                                                onMouseOut={e => { e.target.pause(); e.target.currentTime = 2; }}
+                                                            />
+                                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                                                                <div className="w-12 h-12 rounded-full bg-[#fcb900] flex items-center justify-center text-dark-900 shadow-xl transform scale-50 group-hover:scale-100 transition-transform">
+                                                                    <FaPlay className="ml-1" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <h4 className="font-bold text-white truncate mb-1 text-lg">{video.title}</h4>
+                                                        <div className="flex items-center justify-between text-xs text-gray-500">
+                                                            <span>{video.uploadedBy?.username || 'Detailed View'}</span>
+                                                            <span className="flex items-center gap-1"><FaChartLine className="text-[#fcb900]"/> {video.views || 0}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="py-20 text-center">
+                                                <div className="w-20 h-20 bg-dark-800 rounded-full flex items-center justify-center mx-auto mb-6 text-gray-600">
+                                                    <FaSearch className="text-3xl" />
+                                                </div>
+                                                <h3 className="text-xl font-bold text-white mb-2">No videos found</h3>
+                                                <p className="text-gray-500">Try searching for something else</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    /* STANDARD DASHBOARD CONTENT */
+                                    <>
+                                        {/* Hero Banner */}
                                 {topVideo ? (
                                     <div className="w-full h-[400px] rounded-[2rem] relative overflow-hidden group shadow-2xl">
                                         <div className="absolute inset-0 bg-dark-800">
                                             {/* Placeholder for video thumbnail as background */}
                                             <div className="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/50 to-transparent z-10"></div>
-                                            <img 
-                                                    src="https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=2070&auto=format&fit=crop" 
-                                                    alt="Hero Background" 
-                                                    className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
+                                            <video 
+                                                src={`http://localhost:5000/api/videos/stream/${topVideo._id}?token=${localStorage.getItem('token')}#t=2`} 
+                                                className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
+                                                autoPlay 
+                                                muted 
+                                                loop 
+                                                playsInline
                                             />
                                         </div>
                                         <div className="absolute bottom-0 left-0 p-10 z-20 w-full max-w-2xl">
@@ -537,9 +763,17 @@ export const Dashboard = () => {
                                         <h3 className="text-xl font-bold text-white">Continue Watching</h3>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                                        {videos.slice(0, 3).map(video => (
+                                        {filteredVideos.slice(0, 3).map(video => (
                                                 <div key={video._id} className="bg-dark-800 rounded-3xl p-4 hover:bg-dark-700 transition-colors group cursor-pointer border border-transparent hover:border-white/5" onClick={() => navigate(`/watch/${video._id}`)}>
                                                 <div className="aspect-video rounded-2xl bg-black/50 relative overflow-hidden mb-4">
+                                                    <video
+                                                        src={`http://localhost:5000/api/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                        className="absolute inset-0 w-full h-full object-cover opacity-80"
+                                                        muted
+                                                        loop
+                                                        onMouseOver={e => e.target.play()}
+                                                        onMouseOut={e => { e.target.pause(); e.target.currentTime = 2; }}
+                                                    />
                                                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
                                                         <div className="w-12 h-12 rounded-full bg-[#fcb900] flex items-center justify-center text-dark-900 shadow-xl transform scale-50 group-hover:scale-100 transition-transform">
                                                             <FaPlay className="ml-1" />
@@ -567,9 +801,17 @@ export const Dashboard = () => {
                                         <button className="text-[#fcb900] text-sm hover:underline">See All</button>
                                     </div>
                                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                                        {videos.map(video => (
+                                        {filteredVideos.map(video => (
                                             <div key={video._id} className="relative group cursor-pointer" onClick={() => navigate(`/watch/${video._id}`)}>
                                                 <div className="aspect-[3/4] rounded-2xl bg-dark-800 overflow-hidden relative mb-3 border border-white/5">
+                                                     <video
+                                                        src={`http://localhost:5000/api/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                        className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700"
+                                                        muted
+                                                        loop
+                                                        onMouseOver={e => e.target.play()}
+                                                        onMouseOut={e => { e.target.pause(); e.target.currentTime = 2; }}
+                                                    />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
                                                         <h5 className="font-bold text-white text-sm line-clamp-2">{video.title}</h5>
                                                         <p className="text-xs text-gray-300 mt-1">{video.views || 0} views</p>
@@ -579,6 +821,9 @@ export const Dashboard = () => {
                                         ))}
                                     </div>
                                 </div>
+
+                                    </>
+                                )}
                             </div>
 
                             {/* Right Sidebar (Top Lists) */}
@@ -588,19 +833,27 @@ export const Dashboard = () => {
                                 <div>
                                     <h3 className="text-lg font-bold text-white mb-6">Top This Week</h3>
                                     <div className="space-y-4">
-                                        {videos.slice(0, 4).sort((a,b) => (b.views||0) - (a.views||0)).map((video, idx) => (
+                                        {filteredVideos.slice(0, 4).sort((a,b) => (b.views||0) - (a.views||0)).map((video, idx) => (
                                             <div key={video._id} className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate(`/watch/${video._id}`)}>
                                                 <div className="w-16 h-16 rounded-xl bg-dark-800 flex-shrink-0 relative overflow-hidden border border-white/5">
+                                                     <video
+                                                        src={`http://localhost:5000/api/videos/stream/${video._id}?token=${localStorage.getItem('token')}#t=2`}
+                                                        className="absolute inset-0 w-full h-full object-cover opacity-80"
+                                                        muted
+                                                        loop
+                                                        onMouseOver={e => e.target.play()}
+                                                        onMouseOut={e => { e.target.pause(); e.target.currentTime = 2; }}
+                                                    />
                                                     {/* Ranking Badge */}
-                                                    <div className="absolute top-0 left-0 w-6 h-6 bg-[#fcb900] text-dark-900 flex items-center justify-center text-xs font-bold rounded-br-lg">{idx + 1}</div>
+                                                    <div className="absolute top-0 left-0 w-6 h-6 bg-[#fcb900] text-dark-900 flex items-center justify-center text-xs font-bold rounded-br-lg z-10">{idx + 1}</div>
                                                 </div>
                                                 <div className="min-w-0">
                                                     <h4 className="font-bold text-white text-sm truncate group-hover:text-[#fcb900] transition-colors">{video.title}</h4>
                                                     <div className="flex items-center gap-2 mt-1">
-                                                        <span className="text-xs text-gray-500">Action, Sci-Fi</span>
+                                                        <span className="text-xs text-gray-500">{video.uploadedBy?.username || 'Unknown User'}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1 mt-1 text-xs text-[#fcb900]">
-                                                        <FaStar /> <span className="text-white">9.8</span>
+                                                        <FaChartLine /> <span className="text-white">{video.views || 0} views</span>
                                                     </div>
                                                 </div>
                                             </div>

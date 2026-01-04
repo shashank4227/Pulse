@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { uploadVideo, getVideos, getVideoStream, updateVideo } = require('../controllers/video.controller');
+const { uploadVideo, getVideos, getVideoStream, updateVideo, incrementView, deleteVideo } = require('../controllers/video.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 
 // Multer Config
@@ -13,7 +13,8 @@ const storage = multer.diskStorage({
     filename: function (req, file, cb) {
         // Sanitize filename to avoid issues with special characters
         const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-        cb(null, Date.now() + '-' + safeName)
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + '-' + safeName)
     }
 });
 
@@ -34,5 +35,7 @@ router.post('/upload', protect, authorize('admin', 'editor'), upload.single('vid
 router.get('/', protect, getVideos); // All roles can list (scoped to tenant)
 router.get('/stream/:id', protect, getVideoStream); 
 router.put('/:id', protect, authorize('admin', 'editor'), updateVideo); 
+router.delete('/:id', protect, authorize('admin', 'editor'), deleteVideo); 
+router.post('/:id/view', protect, incrementView); 
 
 module.exports = router;

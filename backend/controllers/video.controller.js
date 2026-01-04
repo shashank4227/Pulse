@@ -205,6 +205,7 @@ const processVideoWithAI = async (video, io) => {
                 videoId: video._id, 
                 status: 'completed', 
                 sensitivity: video.sensitivityStatus,
+                details: video.sensitivityDetails,
                 progress: 100 
             });
         }
@@ -239,6 +240,7 @@ const processVideoWithAI = async (video, io) => {
                 videoId: video._id, 
                 status: 'completed', 
                 sensitivity: video.sensitivityStatus,
+                details: video.sensitivityDetails,
                 progress: 100 
             });
         }
@@ -289,9 +291,30 @@ exports.getVideos = async (req, res) => {
             query.processingStatus = 'completed'; 
         }
 
+        // 1. Editors: STRICT ISOLATION. Only see their own videos.
+        // User requested: "editor videos should not be accessbile to other editors"
+        if (req.user.role === 'editor') {
+            query.uploadedBy = req.user.id;
+        }
+
         const videos = await Video.find(query).sort({ createdAt: -1 }).populate('uploadedBy', 'username');
         res.json(videos);
     } catch (error) {
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.incrementView = async (req, res) => {
+    try {
+        const video = await Video.findById(req.params.id);
+        if (!video) return res.status(404).json({ message: 'Video not found' });
+        
+        video.views = (video.views || 0) + 1;
+        await video.save();
+        
+        res.status(200).json({ views: video.views });
+    } catch (error) {
+        console.error(error);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -311,6 +334,15 @@ exports.getVideoStream = async (req, res) => {
         const fileSize = stat.size;
         const range = req.headers.range;
 
+        // View increment logic moved to dedicated 'incrementView' endpoint
+        // to handle session-based viewing reliably.
+
+        if (range) {
+            const parts = range.replace(/bytes=/, "").split("-");
+            const startByte = parseInt(parts[0], 10);
+            // ... (rest of stream logic remains same/similar but without increment)
+        }
+
         if (range) {
             const parts = range.replace(/bytes=/, "").split("-");
             const start = parseInt(parts[0], 10);
@@ -323,6 +355,9 @@ exports.getVideoStream = async (req, res) => {
                 'Accept-Ranges': 'bytes',
                 'Content-Length': chunksize,
                 'Content-Type': 'video/mp4',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
             };
 
             res.writeHead(206, head);
@@ -362,6 +397,39 @@ exports.updateVideo = async (req, res) => {
 
         await video.save();
         res.json(video);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+exports.deleteVideo = async (req, res) => {
+    try {
+        const video = await Video.findById(req.params.id);
+
+        if (!video) {
+            return res.status(404).json({ message: 'Video not found' });
+        }
+
+        // Check ownership or admin role
+        if (video.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Not authorized to delete this video' });
+        }
+
+        // Delete file from filesystem
+        // We use try-catch here so that even if file is missing (e.g. manually deleted), 
+        // we still delete the DB record.
+        try {
+            if (fs.existsSync(video.path)) {
+                fs.unlinkSync(video.path);
+            }
+        } catch (fsError) {
+            console.error('File deletion error:', fsError);
+        }
+
+        await video.deleteOne();
+
+        res.json({ message: 'Video removed' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });
