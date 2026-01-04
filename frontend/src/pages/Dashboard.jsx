@@ -724,7 +724,7 @@ export const Dashboard = () => {
                                             {/* Placeholder for video thumbnail as background */}
                                             <div className="absolute inset-0 bg-gradient-to-t from-dark-900 via-dark-900/50 to-transparent z-10"></div>
                                             <video 
-                                                src={`${API_BASE_URL}/videos/stream/${topVideo._id}?token=${localStorage.getItem('token')}#t=2`} 
+                                                src={`${import.meta.env.VITE_API_URL}/videos/stream/${topVideo._id}?token=${localStorage.getItem('token')}#t=2`} 
                                                 className="w-full h-full object-cover opacity-60 group-hover:scale-105 transition-transform duration-700"
                                                 autoPlay 
                                                 muted 
