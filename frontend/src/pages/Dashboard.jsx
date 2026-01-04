@@ -584,9 +584,10 @@ export const Dashboard = () => {
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                                <span className="flex items-center gap-1"><FaClock /> {new Date(video.createdAt).toLocaleDateString()}</span>
-                                                                <span className="flex items-center gap-1"><FaChartLine /> {video.views || 0} views</span>
-                                                                {video.size && <span className="bg-white/5 px-1.5 py-0.5 rounded text-gray-500">{(video.size / (1024 * 1024)).toFixed(2)} MB</span>}
+                                                                    <span className="flex items-center gap-1"><FaUsers className="text-[#fcb900]" /> {video.uploadedBy?.username || 'Unknown'}</span>
+                                                                    <span className="flex items-center gap-1"><FaClock /> {new Date(video.createdAt).toLocaleDateString()}</span>
+                                                                    <span className="flex items-center gap-1"><FaChartLine /> {video.views || 0} views</span>
+                                                                    {video.size && <span className="bg-white/5 px-1.5 py-0.5 rounded text-gray-500">{(video.size / (1024 * 1024)).toFixed(2)} MB</span>}
                                                             </div>
 
                                                             {video.processingStatus === 'processing' && (
