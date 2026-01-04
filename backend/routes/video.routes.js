@@ -5,10 +5,18 @@ const path = require('path');
 const { uploadVideo, getVideos, getVideoStream, updateVideo, incrementView, deleteVideo } = require('../controllers/video.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 
+const fs = require('fs');
+
+// Ensure upload directory exists
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 // Multer Config
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, '../uploads/'))
+        cb(null, uploadDir)
     },
     filename: function (req, file, cb) {
         // Sanitize filename to avoid issues with special characters
