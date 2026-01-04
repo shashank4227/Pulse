@@ -94,14 +94,7 @@ const VideoPlayer = () => {
                                     <span className="flex items-center gap-1.5"><FaEye /> {video.views} views</span>
                                     <span className="flex items-center gap-1.5"><FaClock /> {new Date(video.createdAt).toLocaleDateString()}</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
-                                        <FaThumbsUp /> Like
-                                    </button>
-                                     <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
-                                        <FaShare /> Share
-                                    </button>
-                                </div>
+
                             </div>
                         </div>
 
@@ -119,11 +112,7 @@ const VideoPlayer = () => {
                                     {video.description || "No description provided."}
                                 </p>
                             </div>
-                            <div>
-                                <button className="px-6 py-2 rounded-full bg-white text-dark-900 font-bold hover:bg-gray-200 transition-colors">
-                                    Subscribe
-                                </button>
-                            </div>
+
                          </div>
                     </div>
                 </div>
