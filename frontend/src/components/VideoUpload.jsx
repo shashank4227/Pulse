@@ -114,7 +114,7 @@ const VideoUpload = ({ onUploadSuccess }) => {
                             <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
                                 <FaCheck className="text-green-500 text-2xl" />
                             </div>
-                            <p className="text-white font-medium text-lg mb-1">{file.name}</p>
+                            <p className="text-white font-medium text-lg mb-1 max-w-sm truncate px-2" title={file.name}>{file.name}</p>
                             <p className="text-gray-500 text-sm">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
                             <button 
                                 type="button"
