@@ -174,116 +174,110 @@ const Landing = () => {
                         <Reveal delay={400} className="relative mx-auto max-w-4xl mt-20 md:mt-0">
                             <div className="relative transform rotate-[-4deg] md:rotate-[-6deg] lg:rotate-[-5deg] hover:rotate-[-3deg] transition-transform duration-500">
                                 {/* App Interface */}
-                                <div className="relative bg-gradient-to-br from-dark-800/95 to-dark-900/95 backdrop-blur-xl rounded-[3rem] p-4 md:p-6 border border-white/20 shadow-[0_30px_100px_rgba(0,0,0,0.5)] overflow-hidden">
+                                <div className="relative bg-[#0f0f0f] rounded-[2rem] p-4 md:p-6 border border-white/10 shadow-[0_30px_100px_rgba(0,0,0,0.5)] overflow-hidden aspect-[16/10] flex flex-col">
                                     {/* App Header */}
-                                    <div className="flex items-center justify-between mb-4 md:mb-6">
-                                        <div className="flex items-center gap-2 md:gap-3">
-                                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-[#fcb900] flex items-center justify-center">
-                                                <FaPlay className="text-dark-900 text-sm md:text-lg" />
+                                    <div className="flex items-center justify-between mb-6 px-2">
+                                        <div className="flex items-center gap-8">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg bg-[#fcb900] flex items-center justify-center text-dark-900 font-bold">
+                                                    <FaBolt />
+                                                </div>
+                                                <span className="font-bold text-white tracking-tight hidden md:block">Pulse</span>
                                             </div>
-                                            <span className="text-sm md:text-lg font-bold">Studio Dashboard</span>
+                                            {/* Search Bar Mockup */}
+                                            <div className="hidden md:flex items-center px-4 py-2 rounded-full bg-white/5 border border-white/10 w-64 text-xs text-gray-500 gap-2">
+                                                <div className="w-4 h-4 rounded-full border border-white/20"></div>
+                                                <span>Search videos...</span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-dark-700 flex items-center justify-center">
-                                                <FaBell className="text-gray-400 text-xs md:text-sm" />
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-dark-800 border border-white/10 flex items-center justify-center">
+                                                <FaBell className="text-gray-400 text-xs" />
                                             </div>
-                                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-[#fcb900] to-[#fde047]"></div>
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#fcb900] to-[#fde047]"></div>
                                         </div>
                                     </div>
 
-                                    {/* Stats Section */}
-                                    <div className="mb-4 md:mb-6">
-                                        <div className="text-2xl md:text-3xl font-black mb-2">1,204,502 Views</div>
-                                        <div className="flex items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-400">
-                                            <span className="px-2 md:px-3 py-1 rounded-full bg-[#fcb900]/20 text-[#fcb900] font-bold">+12%</span>
-                                            <span>48.5K Subscribers</span>
-                                            <span>Last 30 days</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Feature Cards Grid */}
-                                    <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
-                                        {/* Top Performing Video */}
-                                        <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-2xl p-3 md:p-4 border border-orange-500/20">
-                                            <h4 className="text-xs md:text-sm font-bold mb-1 md:mb-2 text-orange-200">Top Performing</h4>
-                                            <p className="text-[10px] md:text-xs text-gray-400 mb-2 truncate">Reviewing the new Gemini 1.5</p>
-                                            <div className="aspect-video w-full rounded-lg bg-black/40 border border-white/5 mb-2 relative overflow-hidden group">
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <FaPlay className="text-white/50 text-xs" />
-                                                </div>
+                                    {/* Dashboard Content Mockup */}
+                                    <div className="flex-1 flex gap-6 overflow-hidden">
+                                        {/* Main Content */}
+                                        <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+                                            {/* Hero Banner Mockup */}
+                                            <div className="w-full h-40 md:h-56 rounded-2xl bg-gradient-to-br from-dark-800 to-dark-900 border border-white/5 relative overflow-hidden group flex-shrink-0">
+                                                 <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f0f] via-transparent to-transparent z-10"></div>
+                                                 {/* Abstract Video BG */}
+                                                 <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=2670&auto=format&fit=crop')] bg-cover bg-center opacity-60"></div>
+                                                 
+                                                 <div className="absolute bottom-4 left-6 z-20 max-w-md">
+                                                     <div className="px-2 py-0.5 rounded-md bg-white/10 backdrop-blur w-fit mb-2 text-[8px] font-bold text-[#fcb900] border border-white/10">TRENDING</div>
+                                                     <h3 className="text-lg md:text-2xl font-black text-white mb-2 leading-tight">Cyberpunk: <br/>The New Era</h3>
+                                                     <div className="flex items-center gap-3">
+                                                         <div className="w-8 h-8 rounded-xl bg-[#fcb900] flex items-center justify-center text-dark-900 text-xs pl-0.5 hover:scale-105 transition-transform"><FaPlay /></div>
+                                                         <span className="text-xs font-bold text-white">Watch Now</span>
+                                                     </div>
+                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2 text-[10px] text-gray-400">
-                                                <FaChartLine className="text-[#fcb900]" /> 45K Views
-                                            </div>
-                                        </div>
 
-                                        {/* Analytics Summary */}
-                                        <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-2xl p-3 md:p-4 border border-blue-500/20">
-                                            <h4 className="text-xs md:text-sm font-bold mb-1 md:mb-2 text-blue-200">Channel Analytics</h4>
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between text-[10px] text-gray-400">
-                                                    <span>Watch Time</span>
-                                                    <span className="text-white">12.5K hrs</span>
+                                            {/* "For You" Video Row Mockup */}
+                                            <div className="flex-1 flex flex-col gap-3 min-h-0">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <h4 className="text-xs font-bold text-white">For You</h4>
+                                                    <div className="text-[10px] text-[#fcb900]">See All</div>
                                                 </div>
-                                                <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                                                    <div className="h-full w-3/4 bg-blue-400"></div>
-                                                </div>
-                                                <div className="flex justify-between text-[10px] text-gray-400">
-                                                    <span>Avg. Duration</span>
-                                                    <span className="text-white">8:42</span>
-                                                </div>
-                                                <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-                                                    <div className="h-full w-1/2 bg-indigo-400"></div>
-                                                </div>
-                                            </div>
-                                            <button className="w-full mt-3 px-2 md:px-3 py-1.5 rounded-xl bg-blue-500/20 text-blue-300 text-[10px] md:text-xs font-bold hover:bg-blue-500/30 transition-colors">
-                                                View Details
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Recent Uploads List */}
-                                    <div className="mb-3 md:mb-4">
-                                        <div className="flex items-center justify-between mb-2 md:mb-3">
-                                            <h4 className="text-xs md:text-sm font-bold">Recent Uploads</h4>
-                                            <Link to="/dashboard" className="text-[10px] md:text-xs text-[#fcb900] hover:underline">View All</Link>
-                                        </div>
-                                        <div className="space-y-1.5 md:space-y-2">
-                                            {[
-                                                { title: 'The Future of AI Streaming', status: 'Processing', views: '2.4K', color: 'text-yellow-400' },
-                                                { title: 'Gaming Setup Tour 2025', status: 'Published', views: '18.2K', color: 'text-green-400' },
-                                                { title: 'React vs Vue for 2026', status: 'Published', views: '8.9K', color: 'text-green-400' }
-                                            ].map((video, i) => (
-                                                <div key={i} className="flex items-center justify-between p-1.5 md:p-2 rounded-xl bg-dark-700/50 hover:bg-dark-700 transition-colors">
-                                                    <div className="flex items-center gap-2 md:gap-3">
-                                                        <div className="w-8 h-6 md:w-10 md:h-8 rounded-[4px] bg-dark-800 border border-white/10 flex items-center justify-center">
-                                                            <FaPlay className="text-gray-600 text-[8px]" />
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    {[
+                                                        { title: "AI Revolution", views: "12K", color: "bg-blue-500/20" },
+                                                        { title: "Space X Launch", views: "8.5K", color: "bg-purple-500/20" },
+                                                        { title: "Minimal Setup", views: "42K", color: "bg-green-500/20" }
+                                                    ].map((vid, i) => (
+                                                        <div key={i} className="flex flex-col gap-2 group">
+                                                            <div className="aspect-[4/3] rounded-xl bg-dark-800 border border-white/5 relative overflow-hidden">
+                                                                <div className={`absolute inset-0 ${vid.color} opacity-20`}></div>
+                                                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                                                                <div className="absolute bottom-2 left-2 right-2">
+                                                                    <div className="h-1.5 w-3/4 bg-white/20 rounded-full mb-1"></div>
+                                                                </div>
+                                                                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    <div className="w-6 h-6 rounded-full bg-white/20 backdrop-blur flex items-center justify-center"><FaPlay className="text-[8px] text-white"/></div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <h5 className="text-[10px] font-bold text-white truncate">{vid.title}</h5>
+                                                                <div className="text-[8px] text-gray-500">{vid.views} views</div>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <div className="text-[10px] md:text-xs font-bold truncate max-w-[120px]">{video.title}</div>
-                                                            <div className={`text-[10px] font-medium ${video.color}`}>{video.status}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-[10px] md:text-xs font-bold text-gray-400">
-                                                        {video.views}
-                                                    </div>
+                                                    ))}
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Action Bar */}
-                                    <div className="bg-dark-700/50 rounded-2xl p-3 md:p-4 border border-white/5">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-1.5 md:gap-2">
-                                                <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-[#fcb900]/20 flex items-center justify-center">
-                                                    <FaCloudUploadAlt className="text-[#fcb900] text-[10px]" />
-                                                </div>
-                                                <span className="text-[10px] md:text-xs font-bold text-gray-300">Ready to create?</span>
                                             </div>
-                                            <button className="px-3 md:px-4 py-1.5 rounded-xl bg-[#fcb900] text-dark-900 text-[10px] md:text-xs font-bold hover:bg-[#fde047] transition-colors">
-                                                Upload New
-                                            </button>
+                                        </div>
+
+                                        {/* Right Sidebar Mockup (Top This Week) */}
+                                        <div className="w-48 hidden lg:flex flex-col gap-4 border-l border-white/5 pl-6">
+                                            <div className="text-xs font-bold text-white mb-1">Top This Week</div>
+                                            <div className="flex flex-col gap-3">
+                                                {[1, 2, 3].map((i) => (
+                                                     <div key={i} className="flex items-center gap-3 group">
+                                                        <div className="w-8 h-8 rounded-lg bg-dark-800 border border-white/5 flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-gray-600 relative overflow-hidden">
+                                                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                                            {i}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="h-2 w-full bg-dark-700 rounded-full mb-1.5 group-hover:bg-[#fcb900] transition-colors"></div>
+                                                            <div className="h-1.5 w-2/3 bg-dark-800 rounded-full"></div>
+                                                        </div>
+                                                     </div>
+                                                ))}
+                                            </div>
+                                            
+                                            <div className="mt-auto p-3 rounded-xl bg-gradient-to-br from-[#fcb900]/10 to-transparent border border-[#fcb900]/20">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <FaChartLine className="text-[#fcb900] text-xs" />
+                                                    <span className="text-[10px] font-bold text-[#fcb900]">Trending</span>
+                                                </div>
+                                                <div className="text-[10px] text-gray-400 leading-tight">
+                                                    "Future of AI" is trending #1 today!
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
