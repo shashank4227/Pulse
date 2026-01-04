@@ -1,79 +1,170 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft } from 'react-icons/fa';
+import { FaArrowLeft, FaThumbsUp, FaShare, FaFlag, FaUserCircle, FaClock, FaEye } from 'react-icons/fa';
 import api from '../utils/api';
 
 const VideoPlayer = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const [videoUrl, setVideoUrl] = useState('');
+    const [video, setVideo] = useState(null);
+    const [relatedVideos, setRelatedVideos] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    // Helper for API URL
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        // Use standard consistent logic for local development
-         setVideoUrl(`${import.meta.env.VITE_API_URL}/videos/stream/${id}?token=${token}`);
+        const fetchVideoData = async () => {
+            try {
+                setLoading(true);
+                // 1. Fetch current video details
+                const videoRes = await api.get(`/videos/${id}`);
+                setVideo(videoRes.data);
 
-         // Explicitly increment view count when player mounts (user visits page)
-         // This handles "resuming" correctly as every visit is a view.
-         const incrementView = async () => {
-             try {
-                 await api.post(`/videos/${id}/view`);
-             } catch (err) {
-                 console.error("View increment failed", err);
-             }
-         };
-         incrementView();
+                // 2. Fetch related videos (using normal list for now, ideally filtered)
+                const relatedRes = await api.get('/videos');
+                // Filter out current video
+                const others = relatedRes.data.filter(v => v._id !== id);
+                setRelatedVideos(others);
+
+                // 3. Increment View
+                await api.post(`/videos/${id}/view`);
+            } catch (err) {
+                console.error("Failed to load video data", err);
+                setError(true);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchVideoData();
     }, [id]);
 
-    return (
-        <div className="min-h-screen bg-black flex flex-col items-center justify-center relative animate-fadeIn">
-            <button 
-                onClick={() => navigate('/')} 
-                className="absolute top-8 left-8 text-white/70 flex items-center gap-2 hover:text-white hover:bg-white/10 px-4 py-2 rounded-full transition-all duration-300 group z-50 backdrop-blur-sm"
-            >
-                <FaArrowLeft className="group-hover:-translate-x-1 transition-transform" /> 
-                <span className="font-heading">Back to Library</span>
-            </button>
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-dark-900 flex items-center justify-center">
+                <div className="w-12 h-12 border-4 border-[#fcb900] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
-            <div className="w-full max-w-6xl px-4 relative z-10">
-                <div className="aspect-video bg-dark-900 rounded-2xl overflow-hidden shadow-2xl shadow-primary-DEFAULT/10 border border-white/5 relative group">
-                   {!videoUrl ? (
-                       <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
-                            <div className="w-10 h-10 border-4 border-primary-DEFAULT border-t-transparent rounded-full animate-spin mb-4"></div>
-                            <p>Loading Stream...</p>
-                       </div>
-                   ) : (
-                       <video 
+    if (!video) return <div className="text-white text-center mt-20">Video not found</div>;
+
+    return (
+        <div className="min-h-screen bg-dark-900 text-white font-sans">
+             {/* Navbar Placeholder (Back Button) */}
+             <div className="h-16 flex items-center px-6 border-b border-white/5 bg-dark-800/80 backdrop-blur-sm sticky top-0 z-50">
+                 <button 
+                    onClick={() => navigate('/')} 
+                    className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
+                >
+                    <FaArrowLeft /> <span className="font-bold">Back to Feed</span>
+                </button>
+             </div>
+
+             <div className="max-w-[1800px] mx-auto p-6 lg:p-10 flex flex-col lg:flex-row gap-8">
+                {/* LEFT: Main Player & Info */}
+                <div className="flex-1 min-w-0">
+                    {/* Player Container */}
+                    <div className="aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl shadow-black/50 border border-white/5 relative group">
+                         <video 
                             controls 
                             autoPlay 
                             className="w-full h-full object-contain"
                             onError={() => setError(true)}
-                       >
-                           <source src={videoUrl} type="video/mp4" />
+                        >
+                           <source src={`${API_BASE_URL}/videos/stream/${id}?token=${localStorage.getItem('token')}`} type="video/mp4" />
                            Your browser does not support the video tag.
-                       </video>
-                   )}
-                   
-                   {error && (
-                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-red-500 backdrop-blur-sm">
-                           <div className="text-4xl mb-4">⚠️</div>
-                           <h3 className="text-xl font-bold mb-2">Streaming Error</h3>
-                           <p className="text-gray-400">Failed to load stream. You may not have permission.</p>
-                       </div>
-                   )}
-                </div>
-                
-                <div className="mt-6 flex justify-between items-end px-2">
-                    <div>
-                        <h1 className="text-2xl font-bold text-white mb-2 font-heading">Now Playing</h1>
-                        <p className="text-gray-500 text-sm">Stream ID: <span className="font-mono text-gray-400">{id}</span></p>
+                        </video>
+                         {error && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 text-red-500 backdrop-blur-sm">
+                                <div className="text-4xl mb-4">⚠️</div>
+                                <h3 className="text-xl font-bold mb-2">Streaming Error</h3>
+                                <p className="text-gray-400">Failed to load stream. You may not have permission.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Metadata Section */}
+                    <div className="mt-6 space-y-6">
+                        <div>
+                            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 leading-tight">{video.title}</h1>
+                            <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-gray-400 pb-4 border-b border-white/5">
+                                <div className="flex items-center gap-4">
+                                    <span className="flex items-center gap-1.5"><FaEye /> {video.views} views</span>
+                                    <span className="flex items-center gap-1.5"><FaClock /> {new Date(video.createdAt).toLocaleDateString()}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+                                        <FaThumbsUp /> Like
+                                    </button>
+                                     <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+                                        <FaShare /> Share
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                         {/* Creator Info & Description */}
+                         <div className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 hover:bg-white/[0.07] transition-colors cursor-pointer border border-white/5">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#fcb900] to-[#fde047] p-0.5 shrink-0">
+                                <div className="w-full h-full rounded-full bg-dark-900 flex items-center justify-center text-[#fcb900] font-bold text-xl">
+                                    {video.uploadedBy?.username?.[0]?.toUpperCase() || <FaUserCircle />}
+                                </div>
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="font-bold text-white text-lg">{video.uploadedBy?.username || 'Unknown Creator'}</h3>
+                                <p className="text-sm text-gray-400 mb-3">{video.organization || 'Pulse Creator'}</p>
+                                <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
+                                    {video.description || "No description provided."}
+                                </p>
+                            </div>
+                            <div>
+                                <button className="px-6 py-2 rounded-full bg-white text-dark-900 font-bold hover:bg-gray-200 transition-colors">
+                                    Subscribe
+                                </button>
+                            </div>
+                         </div>
                     </div>
                 </div>
-            </div>
-            
-            {/* Ambient Background Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-primary-DEFAULT/5 blur-[150px] pointer-events-none z-0"></div>
+
+                {/* RIGHT: Sidebar (Wait Next) */}
+                <div className="w-full lg:w-[400px] shrink-0 space-y-6">
+                    <h3 className="text-xl font-bold text-white mb-4">Up Next</h3>
+                    <div className="space-y-4">
+                         {relatedVideos.slice(0, 10).map(relVideo => (
+                             <div 
+                                key={relVideo._id} 
+                                onClick={() => navigate(`/watch/${relVideo._id}`)}
+                                className="flex gap-3 group cursor-pointer"
+                            >
+                                <div className="w-40 aspect-video rounded-xl bg-gray-800 overflow-hidden relative shrink-0 border border-white/5">
+                                    <video 
+                                        src={`${API_BASE_URL}/videos/stream/${relVideo._id}?token=${localStorage.getItem('token')}#t=5`} 
+                                        className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500"
+                                        muted
+                                        onMouseOver={e => e.target.play()}
+                                        onMouseOut={e => {e.target.pause(); e.target.currentTime=5;}}
+                                    />
+                                    <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[10px] font-bold text-white">4:20</div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-white text-sm line-clamp-2 mb-1 group-hover:text-[#fcb900] transition-colors">{relVideo.title}</h4>
+                                    <p className="text-xs text-gray-400">{relVideo.uploadedBy?.username || 'Pulse Creator'}</p>
+                                    <div className="flex items-center gap-2 text-[10px] text-gray-500 mt-1">
+                                        <span>{relVideo.views || 0} views</span>
+                                        <span>•</span>
+                                        <span>{new Date(relVideo.createdAt).toLocaleDateString()}</span>
+                                    </div>
+                                </div>
+                             </div>
+                         ))}
+                         {relatedVideos.length === 0 && (
+                             <div className="text-gray-500 text-sm text-center py-10">No related videos found.</div>
+                         )}
+                    </div>
+                </div>
+             </div>
         </div>
     );
 };

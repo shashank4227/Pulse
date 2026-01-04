@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { uploadVideo, getVideos, getVideoStream, updateVideo, incrementView, deleteVideo } = require('../controllers/video.controller');
+const { uploadVideo, getVideos, getVideoStream, updateVideo, incrementView, deleteVideo, getVideoById } = require('../controllers/video.controller');
 const { protect, authorize } = require('../middleware/auth.middleware');
 
 const fs = require('fs');
@@ -42,6 +42,7 @@ const upload = multer({
 router.post('/upload', protect, authorize('admin', 'editor'), upload.single('video'), uploadVideo);
 router.get('/', protect, getVideos); // All roles can list (scoped to tenant)
 router.get('/stream/:id', protect, getVideoStream); 
+router.get('/:id', protect, getVideoById);
 router.put('/:id', protect, authorize('admin', 'editor'), updateVideo); 
 router.delete('/:id', protect, authorize('admin', 'editor'), deleteVideo); 
 router.post('/:id/view', protect, incrementView); 

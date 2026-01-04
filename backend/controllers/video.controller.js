@@ -319,6 +319,19 @@ exports.incrementView = async (req, res) => {
     }
 };
 
+exports.getVideoById = async (req, res) => {
+    try {
+        const video = await Video.findById(req.params.id).populate('uploadedBy', 'username avatar');
+        if (!video) return res.status(404).json({ message: 'Video not found' });
+        
+        // Return public info
+        res.json(video);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 exports.getVideoStream = async (req, res) => {
     try {
         const video = await Video.findById(req.params.id);
