@@ -439,10 +439,7 @@ export const Dashboard = () => {
                             </div>
                         )}
                         
-                        <button className="w-10 h-10 rounded-full bg-dark-800 flex items-center justify-center text-gray-400 hover:text-white transition-colors relative">
-                            <FaBell />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </button>
+
                         <div className="flex items-center gap-3 pl-4 border-l border-white/10">
                             <span className="text-sm font-bold text-white hidden sm:block">{user?.username}</span>
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#fcb900] to-[#fde047] p-0.5">
