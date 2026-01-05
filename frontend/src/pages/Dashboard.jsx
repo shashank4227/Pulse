@@ -7,7 +7,7 @@ import {
     FaPlay, FaExclamationTriangle, FaCheckCircle, FaSpinner, 
     FaSignOutAlt, FaRedo, FaWifi, FaBell, FaCloudUploadAlt,
     FaChartLine, FaClock, FaThumbsUp, FaComment, FaShare, FaTimes, FaVideo,
-    FaBolt, FaCompass, FaUsers, FaHeart, FaSearch, FaPlus, FaStar, FaShieldAlt, FaTrash
+    FaBolt, FaCompass, FaUsers, FaHeart, FaSearch, FaPlus, FaStar, FaShieldAlt, FaTrash, FaBars
 } from 'react-icons/fa';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -22,6 +22,7 @@ export const Dashboard = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState('all');
     const [showInfoModal, setShowInfoModal] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // Mobile Menu State
     // Helper for API URL
     const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -333,39 +334,56 @@ export const Dashboard = () => {
                 </div>
             )}
 
-            {/* LEFT SIDEBAR - Unified */}
-            <div className="w-64 bg-dark-800/50 backdrop-blur-xl border-r border-white/5 flex flex-col p-6 hidden md:flex shrink-0">
-                <div className="flex items-center gap-3 mb-10 text-[#fcb900]">
-                    <FaBolt className="text-2xl" />
-                    <span className="text-2xl font-bold font-heading tracking-wider">PULSE</span>
+            {/* MOBILE MENU OVERLAY */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/80 backdrop-blur-sm z-40 md:hidden animate-fadeIn"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
+            {/* SIDEBAR - Responsive */}
+            <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-dark-800/95 backdrop-blur-xl border-r border-white/5 flex flex-col p-6 transform transition-transform duration-300 ease-in-out md:static md:translate-x-0 shrink-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="flex items-center justify-between mb-10 text-[#fcb900]">
+                    <div className="flex items-center gap-3">
+                        <FaBolt className="text-2xl" />
+                        <span className="text-2xl font-bold font-heading tracking-wider">PULSE</span>
+                    </div>
+                    {/* Close Button for Mobile */}
+                    <button 
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="md:hidden text-gray-400 hover:text-white"
+                    >
+                        <FaTimes className="text-xl" />
+                    </button>
                 </div>
 
-                <div className="space-y-8 overflow-y-auto custom-scrollbar">
+                <div className="space-y-8 overflow-y-auto custom-scrollbar flex-1">
                     <div>
                         <h4 className="text-xs font-bold text-gray-500 uppercase mb-4">Menu</h4>
                         <div className="space-y-2">
                             {isEditor ? (
                                 <>
                                     <button 
-                                        onClick={() => setFilter('all')}
+                                        onClick={() => { setFilter('all'); setIsMobileMenuOpen(false); }}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'all' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
                                     >
                                         <FaVideo /> <span>All Videos</span>
                                     </button>
                                     <button 
-                                        onClick={() => setFilter('safe')}
+                                        onClick={() => { setFilter('safe'); setIsMobileMenuOpen(false); }}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'safe' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
                                     >
                                         <FaShieldAlt /> <span>Safe Content</span>
                                     </button>
                                     <button 
-                                        onClick={() => setFilter('flagged')}
+                                        onClick={() => { setFilter('flagged'); setIsMobileMenuOpen(false); }}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'flagged' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
                                     >
                                         <FaExclamationTriangle /> <span>Flagged Content</span>
                                     </button>
                                     <button 
-                                        onClick={() => setFilter('processing')}
+                                        onClick={() => { setFilter('processing'); setIsMobileMenuOpen(false); }}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'processing' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
                                     >
                                         <FaSpinner className={filter === 'processing' ? 'animate-spin' : ''} /> <span>Processing</span>
@@ -374,19 +392,19 @@ export const Dashboard = () => {
                             ) : (
                                 <>
                                     <button 
-                                        onClick={() => setFilter('all')}
+                                        onClick={() => { setFilter('all'); setIsMobileMenuOpen(false); }}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'all' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
                                     >
                                         <FaPlay /> <span>All Content</span>
                                     </button>
                                     <button 
-                                        onClick={() => setFilter('trending')}
+                                        onClick={() => { setFilter('trending'); setIsMobileMenuOpen(false); }}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${filter === 'trending' ? 'bg-[#fcb900] text-dark-900 shadow-lg shadow-[#fcb900]/20' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
                                     >
                                         <FaCompass /> <span>Trending</span>
                                     </button>
                                     <button 
-                                        onClick={() => setShowInfoModal(true)}
+                                        onClick={() => { setShowInfoModal(true); setIsMobileMenuOpen(false); }}
                                         className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
                                     >
                                         <FaShieldAlt /> <span>AI Safety Info</span>
@@ -396,7 +414,6 @@ export const Dashboard = () => {
                         </div>
                     </div>
                     
-
 
                     <div className="mt-auto pt-8 border-t border-white/5">
                         <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-gray-400 hover:text-red-400 transition-colors">
@@ -409,12 +426,23 @@ export const Dashboard = () => {
             {/* MAIN CONTENT AREA */}
             <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
                 {/* Header / Search */}
-                <div className="h-20 border-b border-white/5 flex items-center justify-between px-8 bg-dark-900/90 backdrop-blur-sm z-10 shrink-0">
-                    <div className="flex items-center gap-6 text-gray-400 text-sm font-medium">
-                        {isEditor && (
-                            <h2 className="text-white font-bold text-lg">Studio Dashboard</h2>
-                        )}
+                <div className="h-20 border-b border-white/5 flex items-center justify-between px-4 md:px-8 bg-dark-900/90 backdrop-blur-sm z-10 shrink-0">
+                    <div className="flex items-center gap-4">
+                        {/* Hamburger Button */}
+                        <button 
+                            onClick={() => setIsMobileMenuOpen(true)}
+                            className="md:hidden text-gray-400 hover:text-white p-2"
+                        >
+                            <FaBars className="text-xl" />
+                        </button>
+                        
+                        <div className="flex items-center gap-6 text-gray-400 text-sm font-medium">
+                            {isEditor && (
+                                <h2 className="text-white font-bold text-lg hidden sm:block">Studio Dashboard</h2>
+                            )}
+                        </div>
                     </div>
+
                     <div className="flex items-center gap-4">
                         {isEditor && (
                             <div 
