@@ -1,6 +1,8 @@
 const Video = require('../models/Video');
 const fs = require('fs');
 const path = require('path');
+const https = require('https'); // Required for downloading files
+const { cloudinary } = require('../config/cloudinary');
 
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { GoogleAIFileManager } = require("@google/generative-ai/server");
@@ -47,7 +49,24 @@ async function getAvailableModels() {
     });
 }
 
+// Helper to download file from Cloudinary for Gemini (which needs local file)
+const downloadFile = (url, dest) => {
+    return new Promise((resolve, reject) => {
+        const file = fs.createWriteStream(dest);
+        https.get(url, (response) => {
+            response.pipe(file);
+            file.on('finish', () => {
+                file.close(resolve);
+            });
+        }).on('error', (err) => {
+            fs.unlink(dest, () => {});
+            reject(err);
+        });
+    });
+};
+
 const processVideoWithAI = async (video, io) => {
+    let tempFilePath = null;
     try {
         if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_api_key_here') {
             throw new Error("GEMINI_API_KEY not configured");
@@ -59,8 +78,23 @@ const processVideoWithAI = async (video, io) => {
 
         if (io) io.to(video.organization).emit('video_status_update', { videoId: video._id, status: 'processing', progress: 10 });
 
+        // DETERMINE PATH FOR AI (Cloudinary URL or Local Path)
+        let filePathForAI = video.path;
+        
+        // If it's a Cloudinary URL, we MUST download it first because Gemini 'uploadFile' expects a local path
+        if (video.path.startsWith('http')) {
+            console.log("☁️ Downloading from Cloudinary for AI processing...");
+            const tempDir = path.join(__dirname, '../temp_uploads');
+            if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+            
+            tempFilePath = path.join(tempDir, `temp-${Date.now()}-${video.filename}.mp4`);
+            await downloadFile(video.path, tempFilePath);
+            filePathForAI = tempFilePath;
+            console.log("⬇️ Downloaded to:", filePathForAI);
+        }
+
         // 1. Upload to Gemini
-        const uploadResponse = await fileManager.uploadFile(video.path, {
+        const uploadResponse = await fileManager.uploadFile(filePathForAI, {
             mimeType: video.mimetype,
             displayName: video.title,
         });
@@ -244,6 +278,12 @@ const processVideoWithAI = async (video, io) => {
                 progress: 100 
             });
         }
+    } finally {
+        // ALWAYS Clean up temp file if it was downloaded
+        if (tempFilePath && fs.existsSync(tempFilePath)) {
+            console.log("🧹 Deleting temp file:", tempFilePath);
+            fs.unlinkSync(tempFilePath);
+        }
     }
 };
 
@@ -253,11 +293,17 @@ exports.uploadVideo = async (req, res) => {
             return res.status(400).json({ message: 'No video file uploaded' });
         }
 
+        console.log("Uploading file:", req.file);
+
+        // For Cloudinary:
+        // req.file.path -> URL of the file
+        // req.file.filename -> Public ID (e.g. 'pulse_videos/xyz')
+
         const video = await Video.create({
             title: req.body.title || req.file.originalname,
             description: req.body.description,
-            filename: req.file.filename,
-            path: req.file.path,
+            filename: req.file.filename, // This is the public_id for Cloudinary
+            path: req.file.path,         // This is the secure_url
             size: req.file.size,
             mimetype: req.file.mimetype,
             uploadedBy: req.user.id,
@@ -266,13 +312,12 @@ exports.uploadVideo = async (req, res) => {
         });
 
         // Start async processing
-        // Start async processing
         processVideoWithAI(video, req.io);
 
         res.status(201).json(video);
     } catch (error) {
-        // Cleanup file if DB fail
-        if (req.file) fs.unlinkSync(req.file.path);
+        // Cloudinary uploads are already done by multer, so cleaning up on DB failure would require an API call.
+        // For simplicity, we just return the error.
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
@@ -337,24 +382,29 @@ exports.getVideoStream = async (req, res) => {
         const video = await Video.findById(req.params.id);
         if (!video) return res.status(404).json({ message: 'Video not found' });
 
-        // RBAC Check (Viewer can only see if in same org) - handled by query above usually, but good to check here too
-        if (video.organization !== req.user.organization) { // Basic tenant check
+        // RBAC Check
+        if (video.organization !== req.user.organization) { 
             return res.status(403).json({ message: 'Access denied' });
         }
 
+        // CLOUDINARY SUPPORT
+        // If the path is a URL, redirect to it.
+        if (video.path.startsWith('http')) {
+            return res.redirect(video.path); // Redirect to CDN
+        }
+
+        // FALLBACK FOR LOCAL FILES
         const path = video.path;
+
+        // Verify file exists before streaming
+        if (!fs.existsSync(path)) {
+            console.warn(`⚠️ Video file missing: ${path}.`);
+            return res.status(404).json({ message: 'Video file not found on server' });
+        }
+
         const stat = fs.statSync(path);
         const fileSize = stat.size;
         const range = req.headers.range;
-
-        // View increment logic moved to dedicated 'incrementView' endpoint
-        // to handle session-based viewing reliably.
-
-        if (range) {
-            const parts = range.replace(/bytes=/, "").split("-");
-            const startByte = parseInt(parts[0], 10);
-            // ... (rest of stream logic remains same/similar but without increment)
-        }
 
         if (range) {
             const parts = range.replace(/bytes=/, "").split("-");
@@ -368,9 +418,6 @@ exports.getVideoStream = async (req, res) => {
                 'Accept-Ranges': 'bytes',
                 'Content-Length': chunksize,
                 'Content-Type': 'video/mp4',
-                'Cache-Control': 'no-cache, no-store, must-revalidate',
-                'Pragma': 'no-cache',
-                'Expires': '0'
             };
 
             res.writeHead(206, head);
@@ -398,9 +445,6 @@ exports.updateVideo = async (req, res) => {
             return res.status(404).json({ message: 'Video not found' });
         }
 
-        // Check ownership or admin role
-        // Note: req.user.id is from the auth middleware. Ensure it matches your token structure.
-        // If your auth middleware populates req.user as an object with id, this is correct.
         if (video.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Not authorized to edit this video' });
         }
@@ -424,20 +468,29 @@ exports.deleteVideo = async (req, res) => {
             return res.status(404).json({ message: 'Video not found' });
         }
 
-        // Check ownership or admin role
         if (video.uploadedBy.toString() !== req.user.id && req.user.role !== 'admin') {
             return res.status(403).json({ message: 'Not authorized to delete this video' });
         }
 
-        // Delete file from filesystem
-        // We use try-catch here so that even if file is missing (e.g. manually deleted), 
-        // we still delete the DB record.
-        try {
-            if (fs.existsSync(video.path)) {
-                fs.unlinkSync(video.path);
+        // Delete from Cloudinary or Filesystem
+        if (video.path.startsWith('http')) {
+            // Cloudinary Delete
+            try {
+                // filename matches public_id (e.g., "pulse_videos/xyz")
+                console.log(`Deleting from Cloudinary: ${video.filename}`);
+                await cloudinary.uploader.destroy(video.filename, { resource_type: 'video' });
+            } catch (cloudError) {
+                console.error('Cloudinary deletion error:', cloudError);
             }
-        } catch (fsError) {
-            console.error('File deletion error:', fsError);
+        } else {
+            // Local Delete
+            try {
+                if (fs.existsSync(video.path)) {
+                    fs.unlinkSync(video.path);
+                }
+            } catch (fsError) {
+                console.error('File deletion error:', fsError);
+            }
         }
 
         await video.deleteOne();
