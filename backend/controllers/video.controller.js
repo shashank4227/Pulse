@@ -87,7 +87,10 @@ const processVideoWithAI = async (video, io) => {
             const tempDir = path.join(__dirname, '../temp_uploads');
             if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
             
-            tempFilePath = path.join(tempDir, `temp-${Date.now()}-${video.filename}.mp4`);
+            // Sanitize filename to remove slashes (which imply directories) 
+            const safeFilename = video.filename.replace(/[\/\\]/g, '_');
+            tempFilePath = path.join(tempDir, `temp-${Date.now()}-${safeFilename}.mp4`);
+            
             await downloadFile(video.path, tempFilePath);
             filePathForAI = tempFilePath;
             console.log("⬇️ Downloaded to:", filePathForAI);
