@@ -87,19 +87,25 @@ export const Register = () => {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('viewer');
+    const [organization, setOrganization] = useState('');
     const { register } = useContext(AuthContext);
     const navigate = useNavigate();
     const [error, setError] = useState('');
+    const [successMsg, setSuccessMsg] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+        setSuccessMsg('');
         setIsLoading(true);
         try {
-            await register(username, email, password, role);
-            navigate('/dashboard');
+            const user = await register(username, email, password, organization);
+            if (user?.status === 'pending') {
+                setSuccessMsg('Request sent! Waiting for admin approval.');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (err) {
             setError(err.toString());
         } finally {
@@ -110,32 +116,29 @@ export const Register = () => {
     return (
         <AuthLayout title="Create Account" subtitle="Join the future of video streaming">
             {error && <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-3 rounded-xl mb-6 text-sm flex items-center gap-2 font-bold">⚠️ {error}</div>}
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <InputField type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
-                <InputField type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} />
-                <InputField type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-                
-                <div className="relative">
-                    <select 
-                        value={role} 
-                        onChange={e => setRole(e.target.value)} 
-                        className="w-full bg-dark-900/50 border border-white/10 text-gray-300 px-4 py-3 rounded-xl focus:outline-none focus:border-[#fcb900] focus:ring-1 focus:ring-[#fcb900] appearance-none transition-colors cursor-pointer font-medium"
+            {successMsg && <div className="bg-green-500/10 border border-green-500/20 text-green-500 p-3 rounded-xl mb-6 text-sm flex items-center gap-2 font-bold">✅ {successMsg}</div>}
+            
+            {!successMsg && (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <InputField type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
+                    <InputField type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} />
+                    <InputField type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
+                    <InputField type="text" placeholder="Organization / Workspace Name" value={organization} onChange={e => setOrganization(e.target.value)} />
+                    
+                    <button 
+                        type="submit" 
+                        disabled={isLoading}
+                        className="w-full bg-[#fcb900] hover:bg-[#e5a800] text-dark-900 py-3.5 rounded-xl font-bold shadow-lg shadow-[#fcb900]/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
                     >
-                        <option value="viewer">Viewer</option>
-                        <option value="editor">Editor</option>
-                        <option value="admin">Admin</option>
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs">▼</div>
-                </div>
+                        {isLoading ? 'Creating Account...' : 'Get Started'}
+                    </button>
+                    <p className="text-xs text-center text-gray-500 mt-2">
+                        If the organization doesn't exist, you'll become its Admin.
+                    </p>
+                </form>
+            )}
 
-                <button 
-                    type="submit" 
-                    disabled={isLoading}
-                    className="w-full bg-[#fcb900] hover:bg-[#e5a800] text-dark-900 py-3.5 rounded-xl font-bold shadow-lg shadow-[#fcb900]/20 transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-                >
-                    {isLoading ? 'Creating Account...' : 'Get Started'}
-                </button>
-            </form>
+
             <div className="mt-8 text-center text-sm text-gray-400">
                 Already have an account? <Link to="/login" className="text-[#fcb900] hover:text-white font-bold transition-colors">Sign in</Link>
             </div>

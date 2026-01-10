@@ -33,6 +33,11 @@ const userSchema = new mongoose.Schema({
     subscribersCount: {
         type: Number,
         default: 0
+    },
+    status: {
+        type: String,
+        enum: ['active', 'pending'],
+        default: 'pending' 
     }
 }, { timestamps: true });
 

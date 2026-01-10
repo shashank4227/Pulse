@@ -16,6 +16,7 @@ export const Dashboard = () => {
     const [stats, setStats] = useState({ totalViews: 0, subscribers: 0, safePercentage: 0, efficiencyStatus: 'Excellent', efficiencyPercentage: 100, growth: 0 });
     const [isUploadOpen, setIsUploadOpen] = useState(false);
     const [editingVideo, setEditingVideo] = useState(null);
+    const [pendingUsers, setPendingUsers] = useState([]); // New State for Admin
     
     // Derived state for top video
     const [topVideo, setTopVideo] = useState(null);
@@ -130,6 +131,33 @@ export const Dashboard = () => {
         socket.on('video_status_update', handleVideoStatusUpdate);
         return () => socket.off('video_status_update', handleVideoStatusUpdate);
     }, [socket, fetchVideos]);
+
+    // Admin: Fetch Pending Users
+    const fetchPendingUsers = useCallback(async () => {
+        if (user?.role === 'admin') {
+            try {
+                const res = await api.get('/auth/pending');
+                setPendingUsers(res.data);
+            } catch (error) {
+                console.error("Failed to fetch pending users", error);
+            }
+        }
+    }, [user]);
+
+    useEffect(() => {
+        fetchPendingUsers();
+    }, [fetchPendingUsers]);
+
+    const handleApproveUser = async (userId) => {
+        try {
+            await api.put(`/auth/approve/${userId}`);
+            alert('User approved!');
+            fetchPendingUsers(); // Refresh list
+        } catch (error) {
+            console.error("Approval failed", error);
+            alert('Failed to approve user');
+        }
+    };
 
     const getStatusColor = (status, sensitivity) => {
         if (status === 'failed' || sensitivity === 'flagged') return 'text-red-400';
@@ -502,6 +530,42 @@ export const Dashboard = () => {
                                     <div className="text-3xl font-black text-white">{stats.totalViews.toLocaleString()}</div>
                                     <div className="text-[#fcb900] text-xs font-bold mt-2">+{stats.growth}% this month</div>
                                 </div>
+
+                                {/* ADMIN PANEL: Pending Approvals */}
+                                {user?.role === 'admin' && pendingUsers.length > 0 && (
+                                    <div className="bg-gradient-to-br from-[#fcb900]/20 to-[#e5a800]/5 backdrop-blur-md p-6 rounded-3xl border border-[#fcb900]/30 relative overflow-hidden">
+                                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                                            <FaUsers className="text-6xl text-[#fcb900]" />
+                                        </div>
+                                        <div className="flex justify-between items-start mb-4 relative z-10">
+                                            <div>
+                                                <h3 className="text-[#fcb900] font-bold text-lg leading-none">Pending Requests</h3>
+                                                <p className="text-xs text-gray-400 mt-1">Users waiting to join</p>
+                                            </div>
+                                            <div className="bg-[#fcb900] text-dark-900 font-bold text-xs px-2 py-1 rounded-lg">
+                                                {pendingUsers.length} New
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="space-y-3 relative z-10 max-h-40 overflow-y-auto custom-scrollbar pr-2">
+                                            {pendingUsers.map(u => (
+                                                <div key={u._id} className="bg-dark-900/50 p-3 rounded-xl flex items-center justify-between border border-white/5">
+                                                    <div>
+                                                        <div className="font-bold text-sm text-white">{u.username}</div>
+                                                        <div className="text-[10px] text-gray-400">{u.email}</div>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => handleApproveUser(u._id)}
+                                                        className="bg-[#fcb900] hover:bg-[#e5a800] text-dark-900 p-2 rounded-lg transition-colors text-xs font-bold"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="bg-dark-800/50 backdrop-blur-md p-6 rounded-3xl border border-white/5">
                                     <h3 className="text-white font-bold text-lg mb-6">Channel Health</h3>
                                     <div className="space-y-6">
