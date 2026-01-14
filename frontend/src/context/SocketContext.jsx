@@ -44,10 +44,6 @@ export const SocketProvider = ({ children }) => {
             newSocket.on('connect', () => {
                 console.log('✅ Socket Connected:', newSocket.id);
                 setIsConnected(true);
-                // Join Tenant Room
-                const org = user.organization || 'default-org';
-                console.log('Joining tenant room:', org);
-                newSocket.emit('join_tenant', org);
             });
 
             newSocket.on('disconnect', (reason) => {
@@ -64,9 +60,6 @@ export const SocketProvider = ({ children }) => {
             newSocket.on('reconnect', (attemptNumber) => {
                 console.log('🔄 Socket Reconnected after', attemptNumber, 'attempts');
                 setIsConnected(true);
-                // Rejoin tenant room after reconnection
-                const org = user.organization || 'default-org';
-                newSocket.emit('join_tenant', org);
             });
 
             newSocket.on('reconnect_attempt', (attemptNumber) => {

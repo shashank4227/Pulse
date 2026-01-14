@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 
 const generateToken = (user) => {
     return jwt.sign(
-        { id: user._id, role: user.role, organization: user.organization },
+        { id: user._id, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: '1d' }
     );
@@ -11,7 +11,8 @@ const generateToken = (user) => {
 
 exports.register = async (req, res) => {
     try {
-        const { username, email, password, organization } = req.body;
+    try {
+        const { username, email, password, role: requestedRole } = req.body;
 
         // Check if user exists
         const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -19,15 +20,8 @@ exports.register = async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        // Check if organization exists
-        const orgName = organization || 'default-org';
-        const orgExists = await User.findOne({ organization: orgName });
-        
-        // Logic: 
-        // If Org does NOT exist -> New Org -> User is Admin & Active
-        // If Org DOES exist -> Join Org -> User is Viewer & Pending
-        const role = orgExists ? 'viewer' : 'admin';
-        const status = orgExists ? 'pending' : 'active';
+        const role = requestedRole || 'viewer';
+        const status = 'active';
 
         // Create user
         const user = await User.create({
@@ -35,7 +29,6 @@ exports.register = async (req, res) => {
             email,
             password,
             role,
-            organization: orgName,
             status
         });
 
@@ -47,13 +40,12 @@ exports.register = async (req, res) => {
 
         res.status(201).json({
             token, // Will be null if pending
-            message: status === 'pending' ? 'Registration successful. Waiting for admin approval.' : 'Registration successful',
+            message: 'Registration successful',
             user: {
                 id: user._id,
                 username: user.username,
                 email: user.email,
                 role: user.role,
-                organization: user.organization,
                 status: user.status
             }
         });
@@ -94,7 +86,6 @@ exports.login = async (req, res) => {
                 username: user.username,
                 email: user.email,
                 role: user.role,
-                organization: user.organization,
                 subscribersCount: user.subscribersCount
             }
         });
@@ -113,38 +104,4 @@ exports.getMe = async (req, res) => {
     }
 };
 
-exports.getPendingUsers = async (req, res) => {
-    try {
-        const users = await User.find({ 
-            organization: req.user.organization, 
-            status: 'pending' 
-        }).select('username email createdAt');
-        
-        res.json(users);
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
-};
 
-exports.approveUser = async (req, res) => {
-    try {
-        const userId = req.params.id;
-        const user = await User.findById(userId);
-
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
-        // Security: Ensure admin can only approve users in THEIR org
-        if (user.organization !== req.user.organization) {
-            return res.status(403).json({ message: 'Not authorized to approve this user' });
-        }
-
-        user.status = 'active';
-        await user.save();
-
-        res.json({ message: `User ${user.username} approved successfully` });
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }
-};

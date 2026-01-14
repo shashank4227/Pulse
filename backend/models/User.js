@@ -25,11 +25,6 @@ const userSchema = new mongoose.Schema({
         enum: ['admin', 'editor', 'viewer'],
         default: 'viewer'
     },
-    // For Multi-tenant isolation (optional stretch: users belong to an Organization)
-    organization: {
-        type: String, 
-        default: 'default-org'
-    },
     subscribersCount: {
         type: Number,
         default: 0
@@ -37,8 +32,8 @@ const userSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ['active', 'pending'],
-        default: 'pending' 
-    }
+        default: 'active' 
+    },
 }, { timestamps: true });
 
 // Password Hashing Middleware

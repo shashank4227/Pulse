@@ -76,7 +76,7 @@ const processVideoWithAI = async (video, io) => {
         video.processingStatus = 'processing';
         await video.save();
 
-        if (io) io.to(video.organization).emit('video_status_update', { videoId: video._id, status: 'processing', progress: 10 });
+        if (io) io.emit('video_status_update', { videoId: video._id, status: 'processing', progress: 10 });
 
         // DETERMINE PATH FOR AI (Cloudinary URL or Local Path)
         let filePathForAI = video.path;
@@ -103,7 +103,7 @@ const processVideoWithAI = async (video, io) => {
         });
 
         console.log(`File uploaded to Gemini: ${uploadResponse.file.name}`);
-        if (io) io.to(video.organization).emit('video_status_update', { videoId: video._id, status: 'processing', progress: 30 });
+        if (io) io.emit('video_status_update', { videoId: video._id, status: 'processing', progress: 30 });
 
         // 2. Wait for processing (File API requirement)
         let file = await fileManager.getFile(uploadResponse.file.name);
@@ -117,7 +117,7 @@ const processVideoWithAI = async (video, io) => {
             throw new Error("Gemini File Processing Failed");
         }
 
-        if (io) io.to(video.organization).emit('video_status_update', { videoId: video._id, status: 'processing', progress: 50 });
+        if (io) io.emit('video_status_update', { videoId: video._id, status: 'processing', progress: 50 });
 
         // 3. Generate Content
         // First, try to get available models from API
@@ -217,7 +217,7 @@ const processVideoWithAI = async (video, io) => {
             throw new Error(`All models failed. Last error: ${errorMsg}.${suggestion}`);
         }
 
-        if (io) io.to(video.organization).emit('video_status_update', { videoId: video._id, status: 'processing', progress: 80 });
+        if (io) io.emit('video_status_update', { videoId: video._id, status: 'processing', progress: 80 });
 
         const responseText = result.response.text();
         console.log("AI Verdict:", responseText);
@@ -238,7 +238,7 @@ const processVideoWithAI = async (video, io) => {
         await video.save();
 
         if (io) {
-            io.to(video.organization).emit('video_status_update', { 
+            io.emit('video_status_update', { 
                 videoId: video._id, 
                 status: 'completed', 
                 sensitivity: video.sensitivityStatus,
@@ -273,7 +273,7 @@ const processVideoWithAI = async (video, io) => {
         await video.save();
         
         if (io) {
-            io.to(video.organization).emit('video_status_update', { 
+            io.emit('video_status_update', { 
                 videoId: video._id, 
                 status: 'completed', 
                 sensitivity: video.sensitivityStatus,
@@ -310,7 +310,6 @@ exports.uploadVideo = async (req, res) => {
             size: req.file.size,
             mimetype: req.file.mimetype,
             uploadedBy: req.user.id,
-            organization: req.user.organization || 'default-org',
             processingStatus: 'pending'
         });
 
@@ -328,7 +327,7 @@ exports.uploadVideo = async (req, res) => {
 exports.getVideos = async (req, res) => {
     try {
         const { status, sensitivity } = req.query;
-        let query = { organization: req.user.organization }; // Tenant isolation
+        let query = {};
 
         if (status) query.processingStatus = status;
         if (sensitivity) query.sensitivityStatus = sensitivity;
@@ -385,10 +384,7 @@ exports.getVideoStream = async (req, res) => {
         const video = await Video.findById(req.params.id);
         if (!video) return res.status(404).json({ message: 'Video not found' });
 
-        // RBAC Check
-        if (video.organization !== req.user.organization) { 
-            return res.status(403).json({ message: 'Access denied' });
-        }
+
 
         // CLOUDINARY SUPPORT
         // If the path is a URL, redirect to it.

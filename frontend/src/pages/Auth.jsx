@@ -87,7 +87,7 @@ export const Register = () => {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [organization, setOrganization] = useState('');
+    const [role, setRole] = useState('viewer');
     const { register } = useContext(AuthContext);
     const navigate = useNavigate();
     const [error, setError] = useState('');
@@ -100,12 +100,8 @@ export const Register = () => {
         setSuccessMsg('');
         setIsLoading(true);
         try {
-            const user = await register(username, email, password, organization);
-            if (user?.status === 'pending') {
-                setSuccessMsg('Request sent! Waiting for admin approval.');
-            } else {
-                navigate('/dashboard');
-            }
+            await register(username, email, password, role);
+            navigate('/dashboard');
         } catch (err) {
             setError(err.toString());
         } finally {
@@ -123,8 +119,23 @@ export const Register = () => {
                     <InputField type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} />
                     <InputField type="email" placeholder="Email Address" value={email} onChange={e => setEmail(e.target.value)} />
                     <InputField type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} />
-                    <InputField type="text" placeholder="Organization / Workspace Name" value={organization} onChange={e => setOrganization(e.target.value)} />
+
                     
+                    <div className="relative group">
+                        <select 
+                            value={role} 
+                            onChange={e => setRole(e.target.value)}
+                            className="w-full bg-dark-900/50 border border-white/10 text-white px-4 py-3 rounded-xl focus:outline-none focus:border-[#fcb900] focus:ring-1 focus:ring-[#fcb900] transition-all duration-300 font-medium appearance-none"
+                        >
+                            <option value="viewer" className="bg-dark-900">Viewer</option>
+                            <option value="editor" className="bg-dark-900">Editor</option>
+                            <option value="admin" className="bg-dark-900">Admin</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                             ▼
+                        </div>
+                    </div>
+
                     <button 
                         type="submit" 
                         disabled={isLoading}
@@ -133,7 +144,7 @@ export const Register = () => {
                         {isLoading ? 'Creating Account...' : 'Get Started'}
                     </button>
                     <p className="text-xs text-center text-gray-500 mt-2">
-                        If the organization doesn't exist, you'll become its Admin.
+                        Create an account to start watching and uploading.
                     </p>
                 </form>
             )}
