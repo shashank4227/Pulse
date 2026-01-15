@@ -11,7 +11,6 @@ const generateToken = (user) => {
 
 exports.register = async (req, res) => {
     try {
-    try {
         const { username, email, password, role: requestedRole } = req.body;
 
         // Check if user exists
@@ -20,23 +19,17 @@ exports.register = async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        const role = requestedRole || 'viewer';
-        const status = 'active';
-
+        // Prevent admin registration
+        const role = (requestedRole === 'editor') ? 'editor' : 'viewer';
         // Create user
         const user = await User.create({
             username,
             email,
             password,
-            role,
-            status
+            role
         });
 
-        // Only generate token if active
-        let token = null;
-        if (status === 'active') {
-             token = generateToken(user);
-        }
+        const token = generateToken(user);
 
         res.status(201).json({
             token, // Will be null if pending
@@ -45,8 +38,7 @@ exports.register = async (req, res) => {
                 id: user._id,
                 username: user.username,
                 email: user.email,
-                role: user.role,
-                status: user.status
+                role: user.role
             }
         });
 
@@ -70,11 +62,6 @@ exports.login = async (req, res) => {
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
             return res.status(401).json({ message: 'Invalid credentials' });
-        }
-
-        // Check Status
-        if (user.status === 'pending') {
-            return res.status(403).json({ message: 'Your account is pending approval by the workspace admin.' });
         }
 
         const token = generateToken(user);

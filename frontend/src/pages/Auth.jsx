@@ -129,7 +129,6 @@ export const Register = () => {
                         >
                             <option value="viewer" className="bg-dark-900">Viewer</option>
                             <option value="editor" className="bg-dark-900">Editor</option>
-                            <option value="admin" className="bg-dark-900">Admin</option>
                         </select>
                         <div className="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
                              ▼

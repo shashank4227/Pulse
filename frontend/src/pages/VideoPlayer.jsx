@@ -109,7 +109,7 @@ const VideoPlayer = () => {
                             </div>
                             <div className="flex-1">
                                 <h3 className="font-bold text-white text-lg">{video.uploadedBy?.username || 'Unknown Creator'}</h3>
-                                <p className="text-sm text-gray-400 mb-3">{video.organization || 'Pulse Creator'}</p>
+                                <p className="text-sm text-gray-400 mb-3">{'Pulse Creator'}</p>
                                 <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-line">
                                     {video.description || "No description provided."}
                                 </p>

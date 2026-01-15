@@ -18,9 +18,36 @@ app.use(cors({
 }));
 app.use(express.json());
 
+const User = require('./models/User');
+
 // Database Connection
 mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log('✅ MongoDB Connected'))
+.then(async () => {
+    console.log('✅ MongoDB Connected');
+
+    // Seed Admin User
+    if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) {
+        try {
+            const adminEmail = process.env.ADMIN_EMAIL;
+            const adminExists = await User.findOne({ email: adminEmail });
+            
+            if (!adminExists) {
+                console.log('🌱 Seeding Admin User...');
+                await User.create({
+                    username: process.env.ADMIN_USERNAME || 'admin',
+                    email: adminEmail,
+                    password: process.env.ADMIN_PASSWORD,
+                    role: 'admin'
+                });
+                console.log('✅ Admin User Created (Credentials from ENV)');
+            } else {
+                console.log('ℹ️ Admin User already exists');
+            }
+        } catch (seedError) {
+            console.error('❌ Failed to seed admin:', seedError);
+        }
+    }
+})
 .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
 // Socket.io Setup
